@@ -159,13 +159,30 @@ public static partial class InitListViewAndEditBox
                 })
         });
 
-        var startColumn = new DataGridTextColumn
+        var startColumn = new DataGridTemplateColumn
         {
             Header = Se.Language.General.Show,
-            Binding = new Binding(nameof(SubtitleLineViewModel.StartTime)) { Converter = fullTimeConverter, Mode = BindingMode.OneWay },
             Width = new DataGridLength(120),
             MinWidth = 100,
             CellTheme = UiUtil.DataGridNoBorderCellTheme,
+            CellTemplate = new FuncDataTemplate<SubtitleLineViewModel>((value, nameScope) =>
+            {
+                var border = new Border
+                {
+                    Padding = new Thickness(4, 2),
+                    [!Border.BackgroundProperty] = new Binding(nameof(SubtitleLineViewModel.TimeCodeBackgroundBrush))
+                };
+
+                var textBlock = new TextBlock
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    [!TextBlock.TextProperty] = new Binding(nameof(SubtitleLineViewModel.StartTime)) { Converter = fullTimeConverter, Mode = BindingMode.OneWay },
+                };
+
+                border.Child = textBlock;
+                return border;
+            })
         };
         vm.SubtitleGrid.Columns.Add(startColumn);
         startColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShowColumnStartTime))
@@ -174,13 +191,30 @@ public static partial class InitListViewAndEditBox
             Source = vm
         });
 
-        var hideColumn = new DataGridTextColumn
+        var hideColumn = new DataGridTemplateColumn
         {
             Header = Se.Language.General.Hide,
-            Binding = new Binding(nameof(SubtitleLineViewModel.EndTime)) { Converter = fullTimeConverter, Mode = BindingMode.OneWay },
             Width = new DataGridLength(120),
             MinWidth = 100,
             CellTheme = UiUtil.DataGridNoBorderCellTheme,
+            CellTemplate = new FuncDataTemplate<SubtitleLineViewModel>((value, nameScope) =>
+            {
+                var border = new Border
+                {
+                    Padding = new Thickness(4, 2),
+                    [!Border.BackgroundProperty] = new Binding(nameof(SubtitleLineViewModel.TimeCodeBackgroundBrush))
+                };
+
+                var textBlock = new TextBlock
+                {
+                    VerticalAlignment = VerticalAlignment.Center,
+                    TextWrapping = TextWrapping.Wrap,
+                    [!TextBlock.TextProperty] = new Binding(nameof(SubtitleLineViewModel.EndTime)) { Converter = fullTimeConverter, Mode = BindingMode.OneWay },
+                };
+
+                border.Child = textBlock;
+                return border;
+            })
         };
         vm.SubtitleGrid.Columns.Add(hideColumn);
         hideColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShowColumnEndTime))
@@ -296,16 +330,11 @@ public static partial class InitListViewAndEditBox
             CellTheme = UiUtil.DataGridNoBorderCellTheme,
         };
 
-        var styleColumnMultiBinding = new MultiBinding
+        styleColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShouldShowStyleColumn))
         {
-            Converter = booleanAndConverter,
-            Bindings =
-            {
-                new Binding(nameof(vm.HasFormatStyle)) { Source = vm, Mode = BindingMode.OneWay },
-                new Binding(nameof(vm.ShowColumnStyle)) { Source = vm, Mode = BindingMode.OneWay }
-            }
-        };
-        styleColumn.Bind(DataGridColumn.IsVisibleProperty, styleColumnMultiBinding);
+            Mode = BindingMode.OneWay,
+            Source = vm,
+        });
         vm.SubtitleGrid.Columns.Add(styleColumn);
 
         var columnGap = new DataGridTemplateColumn
@@ -347,7 +376,7 @@ public static partial class InitListViewAndEditBox
             CellTheme = UiUtil.DataGridNoBorderCellTheme,
         };
         vm.SubtitleGrid.Columns.Add(actorColumn);
-        actorColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShowColumnActor))
+        actorColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShouldShowActorColumn))
         {
             Mode = BindingMode.OneWay,
             Source = vm,
@@ -446,7 +475,7 @@ public static partial class InitListViewAndEditBox
             CellTheme = UiUtil.DataGridNoBorderCellTheme,
         };
         vm.SubtitleGrid.Columns.Add(layerColumn);
-        layerColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShowColumnLayer))
+        layerColumn.Bind(DataGridColumn.IsVisibleProperty, new Binding(nameof(vm.ShouldShowLayerColumn))
         {
             Mode = BindingMode.OneWay,
             Source = vm,

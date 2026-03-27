@@ -68,7 +68,7 @@ public class Se
 
         DataFolder = IsPortable
             ? ExePath
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Subtitle Edit");
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), GetInstalledDataFolderName());
 
         if (!Directory.Exists(DataFolder))
         {
@@ -88,6 +88,35 @@ public class Se
         Configuration.DataDirectory = DataFolder;
         Configuration.BaseDirectory = Se.DataFolder;
         NetflixQualityCheck.NetflixCheckShotChange.ShotChangeDirectory = Se.ShotChangesFolder;
+    }
+
+    private static string GetInstalledDataFolderName()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            return "Subtitle Edit";
+        }
+
+        // Keep stable data folders for installed macOS bundles while allowing
+        // alternate app names like "Subtitle Edit Beta11.app" to use their own state.
+        try
+        {
+            var macOsDirectory = new DirectoryInfo(ExePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var contentsDirectory = macOsDirectory.Parent;
+            var appBundleDirectory = contentsDirectory?.Parent;
+            var bundleName = appBundleDirectory?.Name;
+
+            if (!string.IsNullOrWhiteSpace(bundleName) && bundleName.EndsWith(".app", StringComparison.OrdinalIgnoreCase))
+            {
+                return bundleName[..^4];
+            }
+        }
+        catch
+        {
+            // Fall back to the legacy shared folder if bundle inspection fails.
+        }
+
+        return "Subtitle Edit";
     }
 
     public static string DictionariesFolder => Path.Combine(DataFolder, "Dictionaries");

@@ -250,6 +250,11 @@ public partial class MainViewModel :
     [ObservableProperty] private string _surroundWith3Text;
     [ObservableProperty] private bool _isSubtitleSecondaryVisible;
 
+    public bool HasActorValues => Subtitles.Any(p => !string.IsNullOrWhiteSpace(p.Actor));
+    public bool ShouldShowStyleColumn => HasFormatStyle && ShowColumnStyle;
+    public bool ShouldShowActorColumn => HasFormatStyle && ShowColumnActor && HasActorValues;
+    public bool ShouldShowLayerColumn => IsFormatAssa && ShowColumnLayer;
+
     public DataGrid SubtitleGrid { get; set; }
     public Border? SubtitleGridDropHost { get; set; }
     public Window? Window { get; set; }
@@ -305,6 +310,7 @@ public partial class MainViewModel :
     private bool _changingFormatProgrammatically;
     private bool _formatChangedByUser;
     private SubtitleFormat? _formatChangedFrom;
+    private bool _hasAppliedStyledColumnDefaults;
 
     private readonly IFileHelper _fileHelper;
     private readonly IFolderHelper _folderHelper;
@@ -6545,6 +6551,120 @@ public partial class MainViewModel :
         Se.Settings.General.ShowColumnLayer = ShowColumnLayer;
         ShowColumnLayer = Se.Settings.General.ShowColumnLayer;
         AutoFitColumns();
+    }
+
+    partial void OnShowColumnStyleChanged(bool value)
+    {
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    partial void OnShowColumnActorChanged(bool value)
+    {
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    partial void OnShowColumnLayerChanged(bool value)
+    {
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    partial void OnHasFormatStyleChanged(bool value)
+    {
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    partial void OnSubtitlesChanged(ObservableCollection<SubtitleLineViewModel>? oldValue, ObservableCollection<SubtitleLineViewModel> newValue)
+    {
+        if (oldValue != null)
+        {
+            oldValue.CollectionChanged -= OnSubtitlesCollectionChangedForActorVisibility;
+            foreach (var item in oldValue)
+            {
+                item.PropertyChanged -= OnSubtitleActorPropertyChanged;
+            }
+        }
+
+        newValue.CollectionChanged += OnSubtitlesCollectionChangedForActorVisibility;
+        foreach (var item in newValue)
+        {
+            item.PropertyChanged += OnSubtitleActorPropertyChanged;
+        }
+
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    partial void OnIsFormatAssaChanged(bool value)
+    {
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    private void RefreshFormatSpecificColumnVisibility()
+    {
+        OnPropertyChanged(nameof(HasActorValues));
+        OnPropertyChanged(nameof(ShouldShowStyleColumn));
+        OnPropertyChanged(nameof(ShouldShowActorColumn));
+        OnPropertyChanged(nameof(ShouldShowLayerColumn));
+    }
+
+    private void EnsureStyledColumnsVisibleForCurrentFormat()
+    {
+        if (HasFormatStyle && !_hasAppliedStyledColumnDefaults)
+        {
+            var updated = false;
+            if (!ShowColumnStyle)
+            {
+                ShowColumnStyle = true;
+                updated = true;
+            }
+
+            if (HasActorValues && !ShowColumnActor)
+            {
+                ShowColumnActor = true;
+                updated = true;
+            }
+
+            if (updated)
+            {
+                Se.Settings.General.ShowColumnStyle = ShowColumnStyle;
+                Se.Settings.General.ShowColumnActor = ShowColumnActor;
+            }
+
+            _hasAppliedStyledColumnDefaults = true;
+        }
+        if (ShowColumnLayer)
+        {
+            ShowColumnLayer = false;
+            Se.Settings.General.ShowColumnLayer = false;
+        }
+    }
+
+    private void OnSubtitlesCollectionChangedForActorVisibility(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems != null)
+        {
+            foreach (SubtitleLineViewModel item in e.OldItems)
+            {
+                item.PropertyChanged -= OnSubtitleActorPropertyChanged;
+            }
+        }
+
+        if (e.NewItems != null)
+        {
+            foreach (SubtitleLineViewModel item in e.NewItems)
+            {
+                item.PropertyChanged += OnSubtitleActorPropertyChanged;
+            }
+        }
+
+        RefreshFormatSpecificColumnVisibility();
+    }
+
+    private void OnSubtitleActorPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SubtitleLineViewModel.Actor))
+        {
+            RefreshFormatSpecificColumnVisibility();
+        }
     }
 
     [RelayCommand]
@@ -14275,11 +14395,22 @@ public partial class MainViewModel :
 
             var hasLayers = _visibleLayers != null && Se.Settings.Assa.HideLayersFromSubtitleGrid;
 
+            foreach (var subtitle in Subtitles)
+            {
+                subtitle.HasTimeCodeOverlap = false;
+            }
+
             for (var i = 0; i < Subtitles.Count - 1; i++)
             {
                 var p = Subtitles[i];
                 var next = Subtitles[i + 1];
-                p.Gap = next.StartTime.TotalMilliseconds - p.EndTime.TotalMilliseconds;
+                var gap = next.StartTime.TotalMilliseconds - p.EndTime.TotalMilliseconds;
+                p.Gap = gap;
+                if (gap < 0)
+                {
+                    p.HasTimeCodeOverlap = true;
+                    next.HasTimeCodeOverlap = true;
+                }
 
                 p.IsHidden = hasLayers && !_visibleLayers!.Contains(p.Layer);
             }
@@ -14912,14 +15043,10 @@ public partial class MainViewModel :
         IsFormatAssa = SelectedSubtitleFormat is AdvancedSubStationAlpha;
         IsFormatSsa = SelectedSubtitleFormat is SubStationAlpha;
         HasFormatStyle = SelectedSubtitleFormat is AdvancedSubStationAlpha or SubStationAlpha;
+        EnsureStyledColumnsVisibleForCurrentFormat();
         ShowLayer = IsFormatAssa && Se.Settings.Appearance.ShowLayer;
         ShowLayerFilterIcon = IsFormatAssa && Se.Settings.Appearance.ShowLayer && _visibleLayers != null;
-
-        if (!IsFormatAssa)
-        {
-            ShowColumnLayer = false;
-            ShowColumnLayerFlyoutMenuItem = false;
-        }
+        ShowColumnLayerFlyoutMenuItem = IsFormatAssa;
 
         AutoFitColumns();
 

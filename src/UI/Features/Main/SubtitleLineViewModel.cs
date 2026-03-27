@@ -49,6 +49,9 @@ public partial class SubtitleLineViewModel : ObservableObject
     [ObservableProperty]
     private bool _isHidden;
 
+    [ObservableProperty]
+    private bool _hasTimeCodeOverlap;
+
     public Paragraph? Paragraph { get; set; }
     public string Extra { get; set; }
     public string Language { get; set; }
@@ -282,7 +285,21 @@ public partial class SubtitleLineViewModel : ObservableObject
         get
         {
             if (Se.Settings.General.ColorDurationTooShort &&
-                Duration.TotalMilliseconds < Se.Settings.General.SubtitleMinimumDisplayMilliseconds || Se.Settings.General.ColorDurationTooLong && Duration.TotalMilliseconds > Se.Settings.General.SubtitleMaximumDisplayMilliseconds)
+                Duration.TotalMilliseconds < Se.Settings.General.SubtitleMinimumDisplayMilliseconds ||
+                Se.Settings.General.ColorDurationTooLong && Duration.TotalMilliseconds > Se.Settings.General.SubtitleMaximumDisplayMilliseconds)
+            {
+                return new SolidColorBrush(_errorColor);
+            }
+
+            return new SolidColorBrush(Colors.Transparent);
+        }
+    }
+
+    public IBrush TimeCodeBackgroundBrush
+    {
+        get
+        {
+            if (Se.Settings.General.ColorTimeCodeOverlap && HasTimeCodeOverlap)
             {
                 return new SolidColorBrush(_errorColor);
             }
@@ -329,10 +346,22 @@ public partial class SubtitleLineViewModel : ObservableObject
         OnPropertyChanged(nameof(GapBackgroundBrush));
     }
 
+    partial void OnHasTimeCodeOverlapChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TimeCodeBackgroundBrush));
+        OnPropertyChanged(nameof(DurationBackgroundBrush));
+        OnPropertyChanged(nameof(GapBackgroundBrush));
+    }
+
     public IBrush GapBackgroundBrush
     {
         get
         {
+            if (Se.Settings.General.ColorTimeCodeOverlap && HasTimeCodeOverlap)
+            {
+                return new SolidColorBrush(_errorColor);
+            }
+
             if (Se.Settings.General.ColorGapTooShort &&
                 Gap < Se.Settings.General.MinimumMillisecondsBetweenLines)
             {

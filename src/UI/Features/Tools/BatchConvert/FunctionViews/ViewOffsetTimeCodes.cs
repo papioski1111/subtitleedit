@@ -1,4 +1,5 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Data;
 using Nikse.SubtitleEdit.Controls;
 using Nikse.SubtitleEdit.Logic;
 using Nikse.SubtitleEdit.Logic.Config;
@@ -21,7 +22,14 @@ public static class ViewOffsetTimeCodes
             Content = Se.Language.General.Offset,
         };
 
-        var timeUpDown = new TimeCodeUpDown();
+        var timeUpDown = new TimeCodeUpDown
+        {
+            DataContext = vm,
+            [!TimeCodeUpDown.ValueProperty] = new Binding(nameof(vm.OffsetTimeCodesTime))
+            {
+                Mode = BindingMode.TwoWay,
+            }
+        };
 
         var panelTimeCode = new StackPanel
         {

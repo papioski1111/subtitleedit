@@ -1504,7 +1504,7 @@ public class BatchConverter : IBatchConverter, IFixCallbacks
 
     private Subtitle RemoveLineBreaks(Subtitle subtitle)
     {
-        if (!_config.OffsetTimeCodes.IsActive)
+        if (!_config.RemoveLineBreaks.IsActive)
         {
             return subtitle;
         }

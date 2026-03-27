@@ -408,6 +408,8 @@ public partial class BatchConvertViewModel : ObservableObject
         Se.Settings.Tools.BatchConvert.AdjustDurationFixedMilliseconds = (int)AdjustFixed;
         Se.Settings.Tools.BatchConvert.AdjustDurationSeconds = AdjustSeconds;
         Se.Settings.Tools.BatchConvert.AdjustDurationPercentage = AdjustPercent;
+        Se.Settings.Tools.BatchConvert.OffsetTimeCodesMilliseconds = OffsetTimeCodesTime.TotalMilliseconds;
+        Se.Settings.Tools.BatchConvert.OffsetTimeCodesForward = OffsetTimeCodesForward;
 
         Se.Settings.Tools.BatchConvert.AutoTranslateEngine = SelectedAutoTranslator.Name;
         Se.Settings.Tools.BatchConvert.AutoTranslateSourceLanguage = SelectedSourceLanguage?.TwoLetterIsoLanguageName ?? "auto";
@@ -479,6 +481,9 @@ public partial class BatchConvertViewModel : ObservableObject
         AdjustFixed = Se.Settings.Tools.BatchConvert.AdjustDurationFixedMilliseconds;
         AdjustSeconds = Se.Settings.Tools.BatchConvert.AdjustDurationSeconds;
         AdjustPercent = Se.Settings.Tools.BatchConvert.AdjustDurationPercentage;
+        OffsetTimeCodesTime = TimeSpan.FromMilliseconds(Se.Settings.Tools.BatchConvert.OffsetTimeCodesMilliseconds);
+        OffsetTimeCodesForward = Se.Settings.Tools.BatchConvert.OffsetTimeCodesForward;
+        OffsetTimeCodesBack = !OffsetTimeCodesForward;
 
         var translator = AutoTranslators.FirstOrDefault(p => p.Name == Se.Settings.Tools.BatchConvert.AutoTranslateEngine);
         if (translator != null)

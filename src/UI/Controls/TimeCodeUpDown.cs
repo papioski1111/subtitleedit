@@ -79,6 +79,7 @@ namespace Nikse.SubtitleEdit.Controls
                 _textBox.RemoveHandler(TextInputEvent, OnTextInput);
                 _textBox.RemoveHandler(KeyDownEvent, OnTextBoxKeyDown);
                 _textBox.GotFocus -= OnTextBoxGotFocus;
+                _textBox.LostFocus -= OnTextBoxLostFocus;
             }
 
             _textBox = e.NameScope.Find<TextBox>("PART_TextBox");
@@ -98,6 +99,7 @@ namespace Nikse.SubtitleEdit.Controls
                 _textBox.AddHandler(TextInputEvent, OnTextInput, RoutingStrategies.Tunnel);
                 _textBox.AddHandler(KeyDownEvent, OnTextBoxKeyDown, RoutingStrategies.Tunnel);
                 _textBox.GotFocus += OnTextBoxGotFocus;
+                _textBox.LostFocus += OnTextBoxLostFocus;
             }
 
             // Initial MinWidth calculation with text measurement
@@ -231,7 +233,14 @@ namespace Nikse.SubtitleEdit.Controls
             {
                 // Select the first digit position
                 _textBox.CaretIndex = 0;
+                _textBox.SelectionStart = 0;
+                _textBox.SelectionEnd = 0;
             }
+        }
+
+        private void OnTextBoxLostFocus(object? sender, RoutedEventArgs e)
+        {
+            UpdateText();
         }
 
         private void OnTextInput(object? sender, TextInputEventArgs e)
@@ -248,10 +257,10 @@ namespace Nikse.SubtitleEdit.Controls
                 return;
             }
 
-            var caret = _textBox.CaretIndex;
+            var caret = Math.Min(_textBox.SelectionStart, _textBox.SelectionEnd);
 
-            // Skip colons
-            while (caret < _textBuffer.Length && _textBuffer[caret] == ':')
+            // Skip separators such as ':' ',' and '.'
+            while (caret < _textBuffer.Length && !char.IsDigit(_textBuffer[caret]))
             {
                 caret++;
             }
@@ -271,12 +280,14 @@ namespace Nikse.SubtitleEdit.Controls
 
             // Move to next editable position
             var nextPos = caret + 1;
-            while (nextPos < _textBuffer.Length && _textBuffer[nextPos] == ':')
+            while (nextPos < _textBuffer.Length && !char.IsDigit(_textBuffer[nextPos]))
             {
                 nextPos++;
             }
 
             _textBox.CaretIndex = Math.Min(nextPos, _textBuffer.Length);
+            _textBox.SelectionStart = _textBox.CaretIndex;
+            _textBox.SelectionEnd = _textBox.CaretIndex;
 
             // Update the bound value
             var newValue = ParseTime(_textBuffer);
@@ -352,7 +363,7 @@ namespace Nikse.SubtitleEdit.Controls
             else if (e.Key == Key.Left)
             {
                 var newPos = _textBox.CaretIndex - 1;
-                while (newPos >= 0 && _textBuffer[newPos] == ':')
+                while (newPos >= 0 && !char.IsDigit(_textBuffer[newPos]))
                 {
                     newPos--;
                 }
@@ -367,7 +378,7 @@ namespace Nikse.SubtitleEdit.Controls
             else if (e.Key == Key.Right)
             {
                 var newPos = _textBox.CaretIndex + 1;
-                while (newPos < _textBuffer.Length && _textBuffer[newPos] == ':')
+                while (newPos < _textBuffer.Length && !char.IsDigit(_textBuffer[newPos]))
                 {
                     newPos++;
                 }
@@ -381,9 +392,66 @@ namespace Nikse.SubtitleEdit.Controls
             }
             else if (e.Key == Key.Back || e.Key == Key.Delete)
             {
-                // Prevent deletion
+                if (e.Key == Key.Back)
+                {
+                    ReplaceDigitAtCaret(moveLeftFirst: true);
+                }
+                else
+                {
+                    ReplaceDigitAtCaret(moveLeftFirst: false);
+                }
+
                 e.Handled = true;
             }
+        }
+
+        private void ReplaceDigitAtCaret(bool moveLeftFirst)
+        {
+            if (_textBox == null || string.IsNullOrEmpty(_textBuffer))
+            {
+                return;
+            }
+
+            var index = Math.Min(_textBox.SelectionStart, _textBox.SelectionEnd);
+            if (moveLeftFirst)
+            {
+                index--;
+            }
+
+            index = FindEditableIndex(index, moveLeftFirst ? -1 : 1);
+            if (index < 0 || index >= _textBuffer.Length)
+            {
+                return;
+            }
+
+            var chars = _textBuffer.ToCharArray();
+            chars[index] = '0';
+            _textBuffer = new string(chars);
+            _textBox.Text = _textBuffer;
+
+            _isUpdatingFromValue = true;
+            SetValue(ValueProperty, ParseTime(_textBuffer));
+            _isUpdatingFromValue = false;
+
+            _textBox.CaretIndex = index;
+            _textBox.SelectionStart = index;
+            _textBox.SelectionEnd = index;
+        }
+
+        private int FindEditableIndex(int startIndex, int direction)
+        {
+            var index = startIndex;
+            while (index >= 0 && index < _textBuffer.Length)
+            {
+                if (char.IsDigit(_textBuffer[index]))
+                {
+                    return index;
+                }
+
+                index += direction;
+            }
+
+            return direction < 0 ? -1 : _textBuffer.Length;
         }
 
         private void ChangeValue(int delta)
